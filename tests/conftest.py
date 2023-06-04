@@ -35,13 +35,16 @@ class MockReturnValue:
     """Мок для возвращаемого значения консьюмера."""
 
     value: list[dict[str, str]]
+    offset: int
+    partition: int
+    topic: str
 
 
 @pytest.fixture
 def mock_consumer(check_data):
     """Консьюмер."""
     consumer = MagicMock()
-    consumer.__iter__.return_value = [MockReturnValue([check_data])]
+    consumer.__iter__.return_value = [MockReturnValue([check_data], 1, 1, 'test_topic')]
     return consumer
 
 

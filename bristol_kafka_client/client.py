@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Generic, Iterator, Type
 
 # noinspection PyProtectedMember
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, OffsetAndMetadata, TopicPartition
 
 from .types import T_BaseModel
 
@@ -20,16 +20,24 @@ class KafkaClient(Generic[T_BaseModel]):
     ) -> Iterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
         fetched_items: list[T_BaseModel] = []
-        for fetched_item in self._consume_record():
+        offsets: dict[TopicPartition, OffsetAndMetadata] = {}
+        for fetched_item, partition, offset in self._consume_record():
             fetched_items.append(fetched_item)
+            offsets[partition] = offset
             if len(fetched_items) >= batch_size_before_insert:
                 yield fetched_items
                 fetched_items.clear()
                 if not self._is_commit_only_manually:
-                    self.consumer.commit()
+                    self.consumer.commit(offsets=offsets)
+                    offsets.clear()
         yield fetched_items
 
-    def _consume_record(self) -> Iterator[T_BaseModel]:
+    def _consume_record(self) -> Iterator[tuple[T_BaseModel, TopicPartition, OffsetAndMetadata]]:
         """Получаем сообщения из Kafka."""
         for message in self.consumer:
-            yield from (self.model(**record) for record in message.value)
+            for record in message.value:
+                yield (
+                    self.model(**record),
+                    TopicPartition(message.topic, message.partition),
+                    OffsetAndMetadata(message.offset, self.consumer.partitions_for_topic(message.topic)),
+                )

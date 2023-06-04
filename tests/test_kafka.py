@@ -15,4 +15,4 @@ def test_consume_record(mock_consumer, kafka_client, check_data):
     """Тестирование получения одной записи."""
     check = list(kafka_client._consume_record())
     assert len(list(check)) == 1
-    assert list(check)[0] == Check(**check_data)
+    assert list(check[0])[0] == Check(**check_data)
