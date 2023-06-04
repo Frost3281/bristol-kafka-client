@@ -25,8 +25,8 @@ class KafkaClient(Generic[T_BaseModel]):
             if len(fetched_items) >= batch_size_before_insert:
                 yield fetched_items
                 fetched_items.clear()
-            if not self._is_commit_only_manually:
-                self.consumer.commit()
+                if not self._is_commit_only_manually:
+                    self.consumer.commit()
         yield fetched_items
 
     def _consume_record(self) -> Iterator[T_BaseModel]:
