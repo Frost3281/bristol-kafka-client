@@ -6,6 +6,10 @@ from kafka import KafkaConsumer, OffsetAndMetadata, TopicPartition
 
 from .types import T_BaseModel
 
+DataWithPartitionsAndOffset = tuple[
+    T_BaseModel, TopicPartition, OffsetAndMetadata,
+]
+
 
 @dataclass
 class KafkaClient(Generic[T_BaseModel]):
@@ -32,12 +36,15 @@ class KafkaClient(Generic[T_BaseModel]):
                     offsets.clear()
         yield fetched_items
 
-    def _consume_record(self) -> Iterator[tuple[T_BaseModel, TopicPartition, OffsetAndMetadata]]:
+    def _consume_record(self) -> Iterator[DataWithPartitionsAndOffset]:
         """Получаем сообщения из Kafka."""
         for message in self.consumer:
             for record in message.value:
-                yield (
-                    self.model(**record),
-                    TopicPartition(message.topic, message.partition),
-                    OffsetAndMetadata(message.offset, self.consumer.partitions_for_topic(message.topic)),
-                )
+                yield self.model(**record), *self._get_partitions_and_offset(message)
+
+    def _get_partitions_and_offset(self, message) -> tuple[TopicPartition, OffsetAndMetadata]:
+        topic_partition = TopicPartition(message.topic, message.partition)
+        offset = OffsetAndMetadata(
+            message.offset, self.consumer.partitions_for_topic(message.topic),
+        )
+        return topic_partition, offset
