@@ -54,5 +54,4 @@ def kafka_client(mock_consumer):
     return KafkaClient(
         consumer=mock_consumer,
         model=Check,
-        _is_commit_only_manually=False
     )
