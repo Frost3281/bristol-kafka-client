@@ -5,6 +5,7 @@ from typing import Any, Callable, Generic, Iterator, Type, Union
 from kafka import KafkaConsumer
 
 from .exceptions import SerializerNotSetError
+from .services import to_list_if_dict
 from .types import T_BaseModel
 
 T_DictAny = dict[str, Any]
@@ -49,7 +50,7 @@ class KafkaClient(Generic[T_BaseModel]):
     def _consume_record(self) -> Iterator[T_BaseModel]:
         """Получаем сообщения из Kafka."""
         for message in self.consumer:
-            yield from (self.serialize(record) for record in message.value)
+            yield from (self.serialize(record) for record in to_list_if_dict(message.value))
 
     @property
     def _checks(self) -> list[Callable[[], None]]:
