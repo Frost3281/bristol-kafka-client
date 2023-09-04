@@ -1,16 +1,13 @@
 from dataclasses import dataclass
-from functools import cached_property
-from typing import Generic, Iterator, Type
+from typing import Any, Callable, Generic, Iterator, Type, Union
 
 # noinspection PyProtectedMember
-from kafka import KafkaConsumer, OffsetAndMetadata, TopicPartition
-from kafka.consumer.fetcher import ConsumerRecord
+from kafka import KafkaConsumer
 
+from .exceptions import SerializerNotSetError
 from .types import T_BaseModel
 
-DataWithPartitionsAndOffset = tuple[
-    T_BaseModel, TopicPartition, OffsetAndMetadata,
-]
+T_DictAny = dict[str, Any]
 
 
 @dataclass
@@ -18,37 +15,33 @@ class KafkaClient(Generic[T_BaseModel]):
     """Клиент для работы с Kafka."""
 
     consumer: KafkaConsumer
-    model: Type[T_BaseModel]
+    model: Union[Type[T_BaseModel], None] = None
+    model_getter: Union[Callable[[T_DictAny], Type[T_BaseModel]], None] = None
+    _is_commit_only_manually: bool = False
 
-    @cached_property
-    def _need_manual_commit(self) -> bool:
-        return not self.consumer.config['enable_auto_commit']
+    def serialize(self, message: T_DictAny) -> T_BaseModel:
+        """Получаем модель для сериализации."""
+        if self.model:
+            return self.model(**message)
+        elif self.model_getter:
+            return self.model_getter(message)(**message)
+        raise SerializerNotSetError()
 
     def consume_records(
-        self, batch_size_before_insert: int = 100 * 5,
+        self, batch_size_before_insert: int = 100,
     ) -> Iterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
         fetched_items: list[T_BaseModel] = []
-        for fetched_item, partition, offset in self._consume_record():
+        for fetched_item in self._consume_record():
             fetched_items.append(fetched_item)
             if len(fetched_items) >= batch_size_before_insert:
                 yield fetched_items
                 fetched_items.clear()
-                if self._need_manual_commit:
-                    self.consumer.commit_async({partition: offset})
+                if not self._is_commit_only_manually:
+                    self.consumer.commit()
         yield fetched_items
 
-    def _consume_record(self) -> Iterator[DataWithPartitionsAndOffset]:
+    def _consume_record(self) -> Iterator[T_BaseModel]:
         """Получаем сообщения из Kafka."""
         for message in self.consumer:
-            for record in message.value:
-                yield self.model(**record), *self._get_partitions_and_offset(message)
-
-    def _get_partitions_and_offset(
-        self, message: ConsumerRecord,
-    ) -> tuple[TopicPartition, OffsetAndMetadata]:
-        topic_partition = TopicPartition(message.topic, message.partition)
-        offset = OffsetAndMetadata(
-            message.offset + 1, self.consumer.partitions_for_topic(message.topic),
-        )
-        return topic_partition, offset
+            yield from (self.serialize(record) for record in message.value)
