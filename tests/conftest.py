@@ -55,3 +55,15 @@ def kafka_client(mock_consumer):
         consumer=mock_consumer,
         model=Check,
     )
+
+
+@pytest.fixture
+def kafka_client_callable(mock_consumer):
+    """Клиент Кафка с model_getter вместо model."""
+    def _serialize_mock(message) -> Check:
+        return Check(**message)
+
+    return KafkaClient(
+        consumer=mock_consumer,
+        model_getter=_serialize_mock,
+    )
