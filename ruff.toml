@@ -1,0 +1,17 @@
+line-length = 90
+
+[lint]
+select = ["ALL"]
+ignore = ["S", "RUF", "FA", "CPY", "PGH", "Q", "ANN101", "ANN102", "PLR2004", "D100", "D104", "D106", "D203", "D212", "UP006", "UP035"]
+
+
+[lint.per-file-ignores]
+"tests/*" = ["ANN", "DTZ"]
+"*/router.py" = ["ANN"]
+"*/routers.py" = ["ANN"]
+
+
+[format]
+quote-style = "single"
+indent-style = "space"
+docstring-code-format = true

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import BaseModel
 
+from bristol_kafka_client.async_client import KafkaClientAsync
 from bristol_kafka_client.client import KafkaClient
 
 
@@ -23,11 +24,7 @@ class Check(BaseModel):
 @pytest.fixture(name='check_data')
 def fixture_check_data():
     """Данные для тестирования."""
-    return {
-        'id': 1,
-        'name': 'Test',
-        'data': 'some data'
-    }
+    return {'id': 1, 'name': 'Test', 'data': 'some data'}
 
 
 @dataclass
@@ -40,7 +37,7 @@ class MockReturnValue:
     topic: str
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_consumer(check_data):
     """Консьюмер."""
     consumer = MagicMock()
@@ -48,7 +45,15 @@ def mock_consumer(check_data):
     return consumer
 
 
-@pytest.fixture
+@pytest.fixture()
+def mock_async_consumer(check_data):
+    """Консьюмер."""
+    consumer = MagicMock()
+    consumer.__aiter__.return_value = [MockReturnValue([check_data], 1, 1, 'test_topic')]
+    return consumer
+
+
+@pytest.fixture()
 def kafka_client(mock_consumer):
     """Клиент Кафка."""
     return KafkaClient(
@@ -57,9 +62,32 @@ def kafka_client(mock_consumer):
     )
 
 
-@pytest.fixture
+@pytest.fixture()
+def kafka_client_async(mock_async_consumer):
+    """Клиент Кафка."""
+    return KafkaClientAsync(
+        consumer=mock_async_consumer,
+        model=Check,
+    )
+
+
+@pytest.fixture()
+def kafka_client_callable_async(mock_async_consumer):
+    """Клиент Кафка с model_getter вместо model."""
+
+    def _serialize_mock(message) -> Check:
+        return Check(**message)
+
+    return KafkaClientAsync(
+        consumer=mock_async_consumer,
+        model_getter=_serialize_mock,
+    )
+
+
+@pytest.fixture()
 def kafka_client_callable(mock_consumer):
     """Клиент Кафка с model_getter вместо model."""
+
     def _serialize_mock(message) -> Check:
         return Check(**message)
 
