@@ -34,3 +34,7 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
         async for message in self.consumer:
             for record in to_list_if_dict(message.value):
                 yield self.serialize(record)
+
+    async def close(self) -> None:
+        """Закрываем соединение."""
+        await self.consumer.stop()
