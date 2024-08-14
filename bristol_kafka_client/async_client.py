@@ -19,15 +19,13 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
         batch_size_before_insert: int = 100,
     ) -> AsyncIterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
-        fetched_items: list[T_BaseModel] = []
         async for fetched_item in self._consume_record():
-            fetched_items.append(fetched_item)
-            if len(fetched_items) >= batch_size_before_insert:
-                yield fetched_items
-                fetched_items.clear()
-                if not self._is_commit_only_manually:
-                    await self.consumer.commit()
-        yield fetched_items
+            self._fetched_items.append(fetched_item)
+            if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
+                continue
+            async for items in self._yield_and_reset():
+                yield items
+        yield self._fetched_items
 
     async def _consume_record(self) -> AsyncIterator[T_BaseModel]:
         """Получаем сообщения из Kafka."""
@@ -38,3 +36,13 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
     async def close(self) -> None:
         """Закрываем соединение."""
         await self.consumer.stop()
+
+    async def _yield_and_reset(self) -> AsyncIterator[list[T_BaseModel]]:
+        yield self._fetched_items
+        self._fetched_items.clear()
+        self._refresh_time()
+        await self._commit()
+
+    async def _commit(self) -> None:
+        if not self._is_commit_only_manually:
+            await self.consumer.commit()
