@@ -20,15 +20,12 @@ class KafkaClient(BaseKafkaClient[T_BaseModel, KafkaConsumer]):
         batch_size_before_insert: int = 100,
     ) -> Iterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
-        fetched_items: list[T_BaseModel] = []
         for fetched_item in self._consume_record():
-            fetched_items.append(fetched_item)
-            if len(fetched_items) >= batch_size_before_insert:
-                yield fetched_items
-                fetched_items.clear()
-                if not self._is_commit_only_manually:
-                    self.consumer.commit()
-        yield fetched_items
+            self._fetched_items.append(fetched_item)
+            if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
+                continue
+            yield from self._yield_batch_and_reset()
+        yield self._fetched_items
 
     def _consume_record(self) -> Iterator[T_BaseModel]:
         """Получаем сообщения из Kafka."""
@@ -36,3 +33,13 @@ class KafkaClient(BaseKafkaClient[T_BaseModel, KafkaConsumer]):
             yield from (
                 self.serialize(record) for record in to_list_if_dict(message.value)
             )
+
+    def _yield_batch_and_reset(self) -> Iterator[list[T_BaseModel]]:
+        yield self._fetched_items
+        self._fetched_items.clear()
+        self._refresh_time()
+        self._commit()
+
+    def _commit(self) -> None:
+        if not self._is_commit_only_manually:
+            self.consumer.commit()
