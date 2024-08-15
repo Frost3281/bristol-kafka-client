@@ -20,8 +20,6 @@ class KafkaClient(BaseKafkaClient[T_BaseModel, KafkaConsumer]):
         batch_size_before_insert: int = 100,
     ) -> Iterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
-        self._fetched_items.clear()
-        self._refresh_time()
         for fetched_item in self._consume_record():
             self._fetched_items.append(fetched_item)
             if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
