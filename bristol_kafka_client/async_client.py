@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
 
@@ -19,6 +20,8 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
         batch_size_before_insert: int = 100,
     ) -> AsyncIterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
+        self._fetched_items.clear()
+        self._refresh_time()
         async for fetched_item in self._consume_record():
             self._fetched_items.append(fetched_item)
             if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
