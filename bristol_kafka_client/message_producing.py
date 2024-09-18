@@ -14,7 +14,7 @@ class KafkaData(Protocol):
         include: IncEx = None,
         exclude: IncEx = None,
         context: Any | None = None,  # noqa: ANN401
-        by_alias: bool = True,
+        by_alias: bool = False,
         exclude_unset: bool = False,
         exclude_defaults: bool = False,
         exclude_none: bool = False,
