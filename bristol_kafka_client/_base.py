@@ -48,7 +48,8 @@ class BaseKafkaClient(Generic[T_BaseModel, T_Consumer]):
             raise SerializerNotSetError
 
     def _is_batch_full_or_timeout_exceeded(
-        self, batch_size_before_insert: int,
+        self,
+        batch_size_before_insert: int,
     ) -> bool:
         is_batch_full = len(self._fetched_items) >= batch_size_before_insert
         is_timeout = time.perf_counter() - self._start_time >= self.max_time_wo_commit
