@@ -56,12 +56,13 @@ async def post_to_kafka(
     data_to_send: Sequence[KafkaData],
     topic: str,
     key: Union[str, None] = None,
-    **dump_kwargs: Any,  # noqa: ANN401
+    *,
+    dump_by_alias: bool = False,
 ) -> None:
     """Отправляем данные в Kafka."""
     await producer.send(
         topic,
-        _transform_models_for_kafka(data_to_send, **dump_kwargs),
+        _transform_models_for_kafka(data_to_send, dump_by_alias=dump_by_alias),
         key=_to_bytes(key),
     )
 
@@ -71,10 +72,15 @@ def _to_bytes(string_to_encode: Union[str, None]) -> Union[bytes, None]:
 
 
 def _transform_models_for_kafka(
-    data_to_send: Sequence[KafkaData], **dump_kwargs: Any,  # noqa: ANN401
+    data_to_send: Sequence[KafkaData],
+    *,
+    dump_by_alias: bool,
 ) -> Union[bytes, None]:
     json_to_send = json.dumps(
-        [item_to_send.model_dump_json(**dump_kwargs) for item_to_send in data_to_send],
+        [
+            item_to_send.model_dump_json(by_alias=dump_by_alias)
+            for item_to_send in data_to_send
+        ],
         indent=4,
         default=str,
         ensure_ascii=False,
