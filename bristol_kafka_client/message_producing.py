@@ -1,6 +1,6 @@
 import json
 from functools import partial
-from typing import Any, Literal, Protocol, Sequence, Union
+from typing import Any, Literal, Protocol, Union
 
 import pydantic_core
 
@@ -54,7 +54,7 @@ class AsyncKafkaProducer(Protocol):
 
 async def post_to_kafka(
     producer: AsyncKafkaProducer,
-    data_to_send: Sequence[KafkaData],
+    data_to_send: Any,  # noqa: ANN401
     topic: str,
     key: Union[str, None] = None,
     *,
@@ -63,7 +63,7 @@ async def post_to_kafka(
     """Отправляем данные в Kafka."""
     await producer.send(
         topic,
-        _transform_models_for_kafka(data_to_send, dump_by_alias=dump_by_alias),
+        _to_kafka_bytes(data_to_send, dump_by_alias=dump_by_alias),
         key=_to_bytes(key),
     )
 
@@ -72,10 +72,10 @@ def _to_bytes(string_to_encode: Union[str, None]) -> Union[bytes, None]:
     return bytes(string_to_encode, 'utf-8') if string_to_encode else None
 
 
-def _transform_models_for_kafka(
-    data_to_send: Sequence[KafkaData],
+def _to_kafka_bytes(
+    data_to_send: Any,  # noqa: ANN401
     *,
-    dump_by_alias: bool,
+    dump_by_alias: bool = False,
 ) -> Union[bytes, None]:
     return _to_bytes(
         json.dumps(
