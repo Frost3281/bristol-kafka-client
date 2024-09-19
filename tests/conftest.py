@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Annotated, Optional
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from bristol_kafka_client.async_client import KafkaClientAsync
 from bristol_kafka_client.client import KafkaClient
@@ -15,10 +15,12 @@ class Check(BaseModel):
 
     id: int
     name: str
-    data: Optional[str] = None
+    data: Annotated[Optional[str], Field(alias='data_alias')]
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     result: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 @pytest.fixture(name='check_data')
