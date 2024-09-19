@@ -1,7 +1,8 @@
 import json
+from functools import partial
 from typing import Any, Literal, Protocol, Sequence, Union
 
-from pydantic.main import IncEx
+import pydantic_core
 
 
 class KafkaData(Protocol):
@@ -11,8 +12,8 @@ class KafkaData(Protocol):
         self,
         *,
         indent: int | None = None,
-        include: IncEx = None,
-        exclude: IncEx = None,
+        include: set[int] | set[str] | dict[int, Any] | dict[str, Any] | None = None,
+        exclude: set[int] | set[str] | dict[int, Any] | dict[str, Any] | None = None,
         context: Any | None = None,  # noqa: ANN401
         by_alias: bool = False,
         exclude_unset: bool = False,
@@ -76,13 +77,9 @@ def _transform_models_for_kafka(
     *,
     dump_by_alias: bool,
 ) -> Union[bytes, None]:
-    json_to_send = json.dumps(
-        [
-            item_to_send.model_dump_json(by_alias=dump_by_alias)
-            for item_to_send in data_to_send
-        ],
-        indent=4,
-        default=str,
-        ensure_ascii=False,
+    return _to_bytes(
+        json.dumps(
+            data_to_send,
+            default=partial(pydantic_core.to_jsonable_python, by_alias=dump_by_alias),
+        ),
     )
-    return _to_bytes(json_to_send)

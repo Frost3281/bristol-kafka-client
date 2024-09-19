@@ -9,7 +9,7 @@ packages = [{include = "bristol_kafka_client"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 kafka-python = "^2.0.2"
-pydantic = "^2.5.3"
+pydantic = "^2.8.2"
 aiokafka = "^0.10.0"
 
 
