@@ -11,6 +11,7 @@ python = "^3.10"
 kafka-python = "^2.0.2"
 pydantic = "^2.8.2"
 aiokafka = "^0.10.0"
+pydantic-settings = "^2.6.0"
 
 
 [tool.poetry.group.dev.dependencies]
