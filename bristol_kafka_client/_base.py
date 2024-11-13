@@ -21,7 +21,7 @@ class BaseKafkaClient(Generic[T_BaseModel, T_Consumer]):
     max_time_wo_commit: int = 60 * 5
     _is_commit_only_manually: bool = False
 
-    _fetched_items: list[T_BaseModel] = field(default_factory=list, init=False)
+    _fetched_items: list[T_BaseModel | None] = field(default_factory=list, init=False)
     _start_time: float = field(default_factory=time.perf_counter, init=False)
 
     def __post_init__(self) -> None:

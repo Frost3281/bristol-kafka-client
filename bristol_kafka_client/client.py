@@ -7,6 +7,7 @@ from kafka import KafkaConsumer
 from ._base import BaseKafkaClient
 from .services import to_list_if_dict
 from .types import T_BaseModel
+from .utils import filter_not_none
 
 T_DictAny = dict[str, Any]
 
@@ -25,7 +26,7 @@ class KafkaClient(BaseKafkaClient[T_BaseModel, KafkaConsumer]):
             if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
                 continue
             yield from self._yield_batch_and_reset()
-        yield self._fetched_items
+        yield filter_not_none(self._fetched_items)
 
     def _consume_record(self) -> Iterator[T_BaseModel]:
         """Получаем сообщения из Kafka."""
@@ -35,7 +36,7 @@ class KafkaClient(BaseKafkaClient[T_BaseModel, KafkaConsumer]):
             )
 
     def _yield_batch_and_reset(self) -> Iterator[list[T_BaseModel]]:
-        yield self._fetched_items
+        yield filter_not_none(self._fetched_items)
         self._fetched_items.clear()
         self._refresh_time()
         self._commit()
