@@ -6,6 +6,7 @@ from aiokafka import AIOKafkaConsumer
 from ._base import BaseKafkaClient
 from .services import to_list_if_dict
 from .types import T_BaseModel
+from .utils import filter_not_none
 
 T_DictAny = dict[str, Any]
 
@@ -25,7 +26,7 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
                 continue
             async for items in self._yield_and_reset():
                 yield items
-        yield self._fetched_items
+        yield filter_not_none(self._fetched_items)
 
     async def _consume_record(self) -> AsyncIterator[T_BaseModel]:
         """Получаем сообщения из Kafka."""
@@ -38,7 +39,7 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
         await self.consumer.stop()
 
     async def _yield_and_reset(self) -> AsyncIterator[list[T_BaseModel]]:
-        yield self._fetched_items
+        yield filter_not_none(self._fetched_items)
         self._fetched_items.clear()
         self._refresh_time()
         await self._commit()
