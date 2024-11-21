@@ -52,18 +52,23 @@ class AsyncKafkaProducer(Protocol):
         """Метод отправки данных в Kafka."""
 
 
-async def post_to_kafka(
+async def post_to_kafka(  # noqa: PLR0913
     producer: AsyncKafkaProducer,
     data_to_send: Any,  # noqa: ANN401
     topic: str,
     key: Union[str, None] = None,
     *,
     dump_by_alias: bool = False,
+    exclude_none_fields: bool = False,
 ) -> None:
     """Отправляем данные в Kafka."""
     await producer.send(
         topic,
-        _to_kafka_bytes(data_to_send, dump_by_alias=dump_by_alias),
+        _to_kafka_bytes(
+            data_to_send,
+            dump_by_alias=dump_by_alias,
+            exclude_none=exclude_none_fields,
+        ),
         key=_to_bytes(key),
     )
 
@@ -76,10 +81,15 @@ def _to_kafka_bytes(
     data_to_send: Any,  # noqa: ANN401
     *,
     dump_by_alias: bool = False,
+    exclude_none: bool = False,
 ) -> Union[bytes, None]:
     return _to_bytes(
         json.dumps(
             data_to_send,
-            default=partial(pydantic_core.to_jsonable_python, by_alias=dump_by_alias),
+            default=partial(
+                pydantic_core.to_jsonable_python,
+                by_alias=dump_by_alias,
+                exclude_none=exclude_none,
+            ),
         ),
     )

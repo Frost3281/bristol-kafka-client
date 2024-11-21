@@ -1,10 +1,16 @@
+import pytest
+
 from bristol_kafka_client.message_producing import (
     _to_kafka_bytes,  # noqa: PLC2701
 )
 from tests.conftest import Check
 
 
-def test_transform_models():
+@pytest.mark.parametrize(
+    'exclude_none',
+    [False, True],
+)
+def test_transform_models(*, exclude_none: bool):
     """Тестирование преобразования моделей."""
     json_data = _to_kafka_bytes(
         [
@@ -13,8 +19,12 @@ def test_transform_models():
             Check(id=3, name='Test', data='some data', result='success'),
         ],
         dump_by_alias=True,
+        exclude_none=exclude_none,
     )
     assert b'data_alias' in (json_data or b'')
+    assert b'result' in (json_data or b'')
+    if not exclude_none:
+        assert b'end_time' in (json_data or b'')
 
 
 def test_transform_model():
