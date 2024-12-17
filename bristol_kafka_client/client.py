@@ -22,13 +22,14 @@ class KafkaClient(BaseKafkaClient[T_BaseModel, KafkaConsumer]):
     ) -> Iterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
         for fetched_item in self._consume_record():
-            self._fetched_items.append(fetched_item)
+            if fetched_item is not None:
+                self._fetched_items.append(fetched_item)
             if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
                 continue
             yield from self._yield_batch_and_reset()
         yield filter_not_none(self._fetched_items)
 
-    def _consume_record(self) -> Iterator[T_BaseModel]:
+    def _consume_record(self) -> Iterator[T_BaseModel | None]:
         """Получаем сообщения из Kafka."""
         for message in self.consumer:
             yield from (

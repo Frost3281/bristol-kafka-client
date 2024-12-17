@@ -17,11 +17,11 @@ class BaseKafkaClient(Generic[T_BaseModel, T_Consumer]):
 
     consumer: T_Consumer
     model: Union[Type[T_BaseModel], None] = None
-    model_getter: Union[Callable[[T_DictAny], T_BaseModel], None] = None
+    model_getter: Union[Callable[[T_DictAny], T_BaseModel | None], None] = None
     max_time_wo_commit: int = 60
     _is_commit_only_manually: bool = False
 
-    _fetched_items: list[T_BaseModel | None] = field(default_factory=list, init=False)
+    _fetched_items: list[T_BaseModel] = field(default_factory=list, init=False)
     _start_time: float = field(default_factory=time.perf_counter, init=False)
 
     def __post_init__(self) -> None:
@@ -29,7 +29,7 @@ class BaseKafkaClient(Generic[T_BaseModel, T_Consumer]):
         for check in self._checks:
             check()
 
-    def serialize(self, message: T_DictAny) -> T_BaseModel:
+    def serialize(self, message: T_DictAny) -> T_BaseModel | None:
         """Получаем модель для сериализации."""
         if self.model:
             return self.model(**message)

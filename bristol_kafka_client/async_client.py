@@ -20,20 +20,20 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
         batch_size_before_insert: int = 100,
     ) -> AsyncIterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
-        while True:
-            async for fetched_item in self._consume_record():
-                if fetched_item is not None:
-                    self._fetched_items.append(fetched_item)
-                if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
-                    continue
-                async for items in self._yield_and_reset():
-                    yield items
+        async for fetched_item in self._consume_record():
+            if fetched_item is not None:
+                self._fetched_items.append(fetched_item)
+            if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
+                continue
+            async for items in self._yield_and_reset():
+                yield items
 
-    async def _consume_record(self) -> AsyncIterator[T_BaseModel]:
+    async def _consume_record(self) -> AsyncIterator[T_BaseModel | None]:
         """Получаем сообщения из Kafka."""
-        message = await self.consumer.getone()
-        for record in to_list_if_dict(message.value):
-            yield self.serialize(record)
+        while True:
+            message = await self.consumer.getone()
+            for record in to_list_if_dict(message.value):
+                yield self.serialize(record)
 
     async def close(self) -> None:
         """Закрываем соединение."""
