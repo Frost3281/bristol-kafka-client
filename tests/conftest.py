@@ -51,7 +51,7 @@ def mock_async_consumer(check_data):
     """Консьюмер."""
     consumer = AsyncMock()
     consumer.getmany.return_value = {
-        TopicPartition('test', 0): [MockReturnValue([check_data])],
+        TopicPartition('check', 0): [MockReturnValue([check_data])],
     }
     return consumer
 

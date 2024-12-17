@@ -15,27 +15,47 @@ T_DictAny = dict[str, Any]
 class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
     """Клиент для работы с Kafka."""
 
+    _tp: TopicPartition | None = None
+    _offset: int | None = None
+
     async def consume_records(
         self,
         batch_size_before_insert: int = 100,
     ) -> AsyncIterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
         while True:
-            result = await self.consumer.getmany(
-                timeout_ms=self.max_time_wo_commit * 1000,
-                max_records=batch_size_before_insert,
-            )
-            for tp, messages in result.items():
-                converted_messages = [to_list_if_dict(msg.value) for msg in messages]
-                yield filter_not_none(
-                    [self.serialize(msg) for msgs in converted_messages for msg in msgs],
-                )
-                await self._commit(tp, messages[-1].offset)
+            async for fetched_item in self._consume_record():
+                if fetched_item is not None:
+                    self._fetched_items.append(fetched_item)
+                if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
+                    continue
+                async for items in self._yield_and_reset():
+                    yield items
+
+    async def _consume_record(self) -> AsyncIterator[T_BaseModel]:
+        """Получаем сообщения из Kafka."""
+        # в getmany max_records - это количество партиций, с которых были получены данные
+        result = await self.consumer.getmany(timeout_ms=self.max_time_wo_commit * 1000)
+        for tp, messages in result.items():
+            self._tp = tp
+            self._offset = messages[-1].offset
+            for message in messages:
+                data = to_list_if_dict(message.value)
+                for record in data:
+                    yield self.serialize(record)
 
     async def close(self) -> None:
         """Закрываем соединение."""
         await self.consumer.stop()
 
-    async def _commit(self, tp: TopicPartition, offset: int) -> None:
+    async def _yield_and_reset(self) -> AsyncIterator[list[T_BaseModel]]:
+        yield filter_not_none(self._fetched_items)
+        self._fetched_items.clear()
+        self._refresh_time()
+        await self._commit()
+
+    async def _commit(self) -> None:
         if not self._is_commit_only_manually:
-            await self.consumer.commit({tp: offset + 1})
+            assert self._tp is not None, 'Партиция для коммита не выставлена'
+            assert self._offset is not None, 'Оффсет для коммита не выставлен'
+            await self.consumer.commit({self._tp: [self._offset]})
