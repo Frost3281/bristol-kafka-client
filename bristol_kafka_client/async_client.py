@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
 
-from aiokafka import AIOKafkaConsumer, TopicPartition
+from aiokafka import AIOKafkaConsumer
 
 from ._base import BaseKafkaClient
 from .services import to_list_if_dict
@@ -14,9 +14,6 @@ T_DictAny = dict[str, Any]
 @dataclass
 class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
     """Клиент для работы с Kafka."""
-
-    _tp: TopicPartition | None = None
-    _offset: int | None = None
 
     async def consume_records(
         self,
@@ -34,15 +31,9 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
 
     async def _consume_record(self) -> AsyncIterator[T_BaseModel]:
         """Получаем сообщения из Kafka."""
-        # в getmany max_records - это количество партиций, с которых были получены данные
-        result = await self.consumer.getmany(timeout_ms=self.max_time_wo_commit * 1000)
-        for tp, messages in result.items():
-            self._tp = tp
-            self._offset = messages[-1].offset
-            for message in messages:
-                data = to_list_if_dict(message.value)
-                for record in data:
-                    yield self.serialize(record)
+        message = await self.consumer.getone()
+        for record in to_list_if_dict(message.value):
+            yield self.serialize(record)
 
     async def close(self) -> None:
         """Закрываем соединение."""
@@ -56,6 +47,4 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
 
     async def _commit(self) -> None:
         if not self._is_commit_only_manually:
-            assert self._tp is not None, 'Партиция для коммита не выставлена'
-            assert self._offset is not None, 'Оффсет для коммита не выставлен'
-            await self.consumer.commit({self._tp: [self._offset]})
+            await self.consumer.commit()

@@ -4,7 +4,6 @@ from typing import Annotated, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from aiokafka import TopicPartition
 from pydantic import BaseModel, ConfigDict, Field
 
 from bristol_kafka_client.async_client import KafkaClientAsync
@@ -50,9 +49,7 @@ def mock_consumer(check_data):
 def mock_async_consumer(check_data):
     """Консьюмер."""
     consumer = AsyncMock()
-    consumer.getmany.return_value = {
-        TopicPartition('check', 0): [MockReturnValue([check_data])],
-    }
+    consumer.getone.return_value = MockReturnValue([check_data])
     return consumer
 
 
