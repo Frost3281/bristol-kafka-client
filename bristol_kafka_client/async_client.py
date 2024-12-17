@@ -21,17 +21,17 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
     ) -> AsyncIterator[list[T_BaseModel]]:
         """Получаем сообщения от консьюмера в бесконечном цикле."""
         async for fetched_item in self._consume_record():
-            if fetched_item is not None:
+            if fetched_item:
                 self._fetched_items.append(fetched_item)
             if not self._is_batch_full_or_timeout_exceeded(batch_size_before_insert):
                 continue
             async for items in self._yield_and_reset():
                 yield items
+        yield filter_not_none(self._fetched_items)
 
     async def _consume_record(self) -> AsyncIterator[T_BaseModel | None]:
         """Получаем сообщения из Kafka."""
-        while True:
-            message = await self.consumer.getone()
+        async for message in self.consumer:
             for record in to_list_if_dict(message.value):
                 yield self.serialize(record)
 
