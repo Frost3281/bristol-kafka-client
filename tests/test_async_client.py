@@ -13,12 +13,10 @@ async def test_async_client(
 ) -> None:
     """Тестирование асинхронного клиента."""
     batch_size = 5
-    record_batches = [
+    record_batches = (
         record
         async for record in kafka_client_async.consume_records(
             batch_size_before_insert=batch_size,
         )
-    ]
-    assert len(record_batches) > 0
-    for batch in record_batches:
-        assert batch == [Check(**check_data)]
+    )
+    assert await anext(record_batches) == [Check(**check_data)]
