@@ -1,42 +1,8 @@
 import json
 from functools import partial
-from typing import Any, Literal, Protocol, Union
+from typing import Any, Protocol, Union
 
 import pydantic_core
-
-
-class KafkaData(Protocol):
-    """Данные для отправки в Kafka."""
-
-    def model_dump_json(  # noqa: PLR0913
-        self,
-        *,
-        indent: int | None = None,
-        include: set[int] | set[str] | dict[int, Any] | dict[str, Any] | None = None,
-        exclude: set[int] | set[str] | dict[int, Any] | dict[str, Any] | None = None,
-        context: Any | None = None,  # noqa: ANN401
-        by_alias: bool = False,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
-        exclude_none: bool = False,
-        round_trip: bool = False,
-        warnings: bool | Literal['none', 'warn', 'error'] = True,
-        serialize_as_any: bool = False,
-    ) -> str:
-        """Метод для сериализации модели."""
-
-
-class KafkaProducer(Protocol):
-    """Продюсер для Кафка."""
-
-    def send(
-        self,
-        topic: str,
-        value: Union[bytes, None],  # noqa: WPS110
-        key: Union[bytes, None] = None,
-        partition: Union[int, None] = None,
-    ) -> None:
-        """Метод отправки данных в Kafka."""
 
 
 class AsyncKafkaProducer(Protocol):

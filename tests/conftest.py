@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated, Optional
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from aiokafka import TopicPartition
 from pydantic import BaseModel, ConfigDict, Field
 
 from bristol_kafka_client.async_client import KafkaClientAsync
@@ -34,6 +35,7 @@ class MockReturnValue:
     """Мок для возвращаемого значения консьюмера."""
 
     value: list[dict[str, str]]
+    offset: int = 1
 
 
 @pytest.fixture()
@@ -47,8 +49,10 @@ def mock_consumer(check_data):
 @pytest.fixture()
 def mock_async_consumer(check_data):
     """Консьюмер."""
-    consumer = MagicMock()
-    consumer.__aiter__.return_value = [MockReturnValue([check_data])]
+    consumer = AsyncMock()
+    consumer.getmany.return_value = {
+        TopicPartition('test', 0): [MockReturnValue([check_data])],
+    }
     return consumer
 
 
