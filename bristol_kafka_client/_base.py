@@ -5,8 +5,6 @@ from typing import Any, Callable, Generic, Type, TypeVar, Union
 from .exceptions import SerializerNotSetError
 from .types import T_BaseModel
 
-# noinspection PyProtectedMember
-
 T_Consumer = TypeVar('T_Consumer')
 T_DictAny = dict[str, Any]
 
