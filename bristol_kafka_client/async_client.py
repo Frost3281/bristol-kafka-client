@@ -42,6 +42,7 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
             messages = flatten(parts_to_records.values())
             if not messages:
                 await asyncio.sleep(10)
+                yield None
             for message in messages:
                 for record in to_list_if_dict(message.value):
                     yield self.serialize(record)
