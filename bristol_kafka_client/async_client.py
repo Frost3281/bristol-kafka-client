@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
 
@@ -6,7 +7,7 @@ from aiokafka import AIOKafkaConsumer
 from ._base import BaseKafkaClient
 from .services import to_list_if_dict
 from .types import T_BaseModel
-from .utils import filter_not_none
+from .utils import filter_not_none, flatten
 
 T_DictAny = dict[str, Any]
 
@@ -33,11 +34,14 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
         self, batch_size_before_insert: int = 100,
     ) -> AsyncIterator[T_BaseModel | None]:
         """Получаем сообщения из Kafka."""
-        parts_to_records = await self.consumer.getmany(
-            timeout_ms=self.max_time_wo_commit * 1000,
-            max_records=batch_size_before_insert,
-        )
-        for messages in list(parts_to_records.values()):
+        while True:
+            parts_to_records = await self.consumer.getmany(
+                timeout_ms=self.max_time_wo_commit * 1000,
+                max_records=batch_size_before_insert,
+            )
+            messages = flatten(parts_to_records.values())
+            if not messages:
+                await asyncio.sleep(10)
             for message in messages:
                 for record in to_list_if_dict(message.value):
                     yield self.serialize(record)
