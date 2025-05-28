@@ -50,6 +50,7 @@ def mock_async_consumer(check_data):
     """Консьюмер."""
     consumer = AsyncMock()
     consumer.getone.return_value = MockReturnValue([check_data])
+    consumer.getmany.return_value = {'test': [MockReturnValue([check_data])]}
     return consumer
 
 
