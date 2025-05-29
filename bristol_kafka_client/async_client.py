@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
 
-from aiokafka import AIOKafkaConsumer
+from aiokafka import AIOKafkaConsumer, ConsumerRecord
 
 from ._base import BaseKafkaClient
 from .services import to_list_if_dict
@@ -31,7 +31,8 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
         yield filter_not_none(self._fetched_items)
 
     async def _consume_record(
-        self, batch_size_before_insert: int = 100,
+        self,
+        batch_size_before_insert: int = 100,
     ) -> AsyncIterator[T_BaseModel | None]:
         """Получаем сообщения из Kafka."""
         while True:
@@ -40,12 +41,18 @@ class KafkaClientAsync(BaseKafkaClient[T_BaseModel, AIOKafkaConsumer]):
                 max_records=batch_size_before_insert,
             )
             messages = flatten(parts_to_records.values())
-            if not messages:
+            if not messages:  # топик пустой
                 await asyncio.sleep(10)
                 yield None
-            for message in messages:
-                for record in to_list_if_dict(message.value):
-                    yield self.serialize(record)
+            for record in await asyncio.to_thread(self._to_records, messages):
+                yield record
+
+    def _to_records(self, messages: list[ConsumerRecord]) -> list[T_BaseModel | None]:
+        return [
+            self.serialize(record)
+            for message in messages
+            for record in to_list_if_dict(message.value)
+        ]
 
     async def close(self) -> None:
         """Закрываем соединение."""
