@@ -1,6 +1,6 @@
 [project]
 name = "bristol-kafka-client"
-version = "1.0.0"
+version = "1.0.1"
 description = ""
 authors = [
     { name = "Vitaliy Mikhalchenko", email = "vitaliy.mikhalchenko@bristolcapital.ru" },
